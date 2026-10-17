@@ -132,15 +132,20 @@ func (h *SlogHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 	h2 := *h
 	ctx := h2.logger.With()
 
+	// Not taking an Event from the pool: only Event.buf is needed,
+	// and it is the buffer already allocated by Logger.With.
+	event := new(Event)
+	event.buf = ctx.l.context
+
 	// The group may turn out to be empty even though it has attrs (for example, all attrs are zero slog.Attr).
 	// So remember where we are in the buffer, to restore the position later if necessary.
-	pos := len(ctx.l.context)
-	ctx.l.context = h2.appendUnopenedGroups(ctx.l.context)
+	pos := len(event.buf)
+	event.buf = h2.appendUnopenedGroups(event.buf)
 
 	notEmpty := false
 	for _, attr := range attrs {
-		c, changed := appendSlogAttrToContext(ctx, attr)
-		ctx = c
+		e, changed := appendSlogAttrToEvent(event, attr)
+		event = e
 		if changed {
 			notEmpty = true
 		}
@@ -150,9 +155,10 @@ func (h *SlogHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 		h2.nOpenGroups += len(h2.unopenedGroups)
 		h2.unopenedGroups = nil
 	} else {
-		ctx.l.context = ctx.l.context[:pos]
+		event.buf = event.buf[:pos]
 	}
 
+	ctx.l.context = event.buf
 	h2.logger = ctx.Logger()
 	return &h2
 }
@@ -314,121 +320,6 @@ func appendSlogAttrToEvent(event *Event, attr slog.Attr) (*Event, bool) {
 	}
 
 	return event, true
-}
-
-func appendSlogAttrToContext(ctx Context, attr slog.Attr) (Context, bool) {
-	attr.Value = attr.Value.Resolve()
-
-	if attr.Equal(slog.Attr{}) {
-		return ctx, false
-	}
-
-	key := attr.Key
-	val := attr.Value
-	switch val.Kind() {
-	case slog.KindString:
-		ctx = ctx.Str(key, val.String())
-	case slog.KindInt64:
-		ctx = ctx.Int64(key, val.Int64())
-	case slog.KindUint64:
-		ctx = ctx.Uint64(key, val.Uint64())
-	case slog.KindFloat64:
-		ctx = ctx.Float64(key, val.Float64())
-	case slog.KindBool:
-		ctx = ctx.Bool(key, val.Bool())
-	case slog.KindDuration:
-		ctx = ctx.Dur(key, val.Duration())
-	case slog.KindTime:
-		ctx = ctx.Time(key, val.Time())
-	case slog.KindGroup:
-		attrs := val.Group()
-		if len(attrs) == 0 {
-			return ctx, false
-		}
-
-		if key == "" {
-			notEmpty := false
-			for _, ga := range attrs {
-				c, changed := appendSlogAttrToContext(ctx, ga)
-				ctx = c
-				if changed {
-					notEmpty = true
-				}
-			}
-			return ctx, notEmpty
-		}
-
-		dict := ctx.CreateDict()
-		notEmpty := false
-		for _, ga := range attrs {
-			d, changed := appendSlogAttrToEvent(dict, ga)
-			dict = d
-			if changed {
-				notEmpty = true
-			}
-		}
-		if !notEmpty {
-			putEvent(dict)
-			return ctx, false
-		}
-		ctx = ctx.Dict(key, dict)
-	case slog.KindAny:
-		v := val.Any()
-		switch cv := v.(type) {
-		case []time.Duration:
-			ctx = ctx.Durs(key, cv)
-		case net.IP:
-			ctx = ctx.IPAddr(key, cv)
-		case []net.IP:
-			ctx = ctx.IPAddrs(key, cv)
-		case net.IPNet:
-			ctx = ctx.IPPrefix(key, cv)
-		case []net.IPNet:
-			ctx = ctx.IPPrefixes(key, cv)
-		case net.HardwareAddr:
-			ctx = ctx.MACAddr(key, cv)
-		case []time.Time:
-			ctx = ctx.Times(key, cv)
-		case error:
-			ctx = ctx.AnErr(key, cv)
-		case []bool:
-			ctx = ctx.Bools(key, cv)
-		case []byte:
-			ctx = ctx.Bytes(key, cv)
-		case []error:
-			ctx = ctx.Errs(key, cv)
-		case []float32:
-			ctx = ctx.Floats32(key, cv)
-		case []float64:
-			ctx = ctx.Floats64(key, cv)
-		case []int:
-			ctx = ctx.Ints(key, cv)
-		case []int8:
-			ctx = ctx.Ints8(key, cv)
-		case []int16:
-			ctx = ctx.Ints16(key, cv)
-		case []int32:
-			ctx = ctx.Ints32(key, cv)
-		case []int64:
-			ctx = ctx.Ints64(key, cv)
-		case []string:
-			ctx = ctx.Strs(key, cv)
-		case []uint:
-			ctx = ctx.Uints(key, cv)
-		case []uint16:
-			ctx = ctx.Uints16(key, cv)
-		case []uint32:
-			ctx = ctx.Uints32(key, cv)
-		case []uint64:
-			ctx = ctx.Uints64(key, cv)
-		default:
-			ctx = ctx.Interface(key, v)
-		}
-	default:
-		ctx = ctx.Interface(key, val.Any())
-	}
-
-	return ctx, true
 }
 
 // Verify at compile time that SlogHandler satisfies the slog.Handler interface.
