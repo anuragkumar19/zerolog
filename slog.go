@@ -28,6 +28,14 @@ type SlogHandler struct {
 //   - A zero [slog.Record.Time] must produce no time field ([slog.Handler] contract).
 //
 //   - [slog.Record.PC] resolves the correct call site.
+//
+// Since the timestamp is sourced from [slog.Record.Time], the configured
+// [TimestampFunc] is not called. To customize the timestamp, wrap the
+// returned handler and adjust [slog.Record.Time].
+//
+// [slog.Logger] always passes a non-nil ctx to Handle, so a ctx set via
+// Logger.With().Ctx() is always replaced by the one from slog. It is only
+// kept when Handle is called directly with a nil ctx.
 func NewSlogHandler(logger Logger) *SlogHandler {
 	h := &SlogHandler{}
 
@@ -68,7 +76,8 @@ func (h *SlogHandler) Enabled(_ context.Context, level slog.Level) bool {
 	return true
 }
 
-// Handle converts the [slog.Record] to an [Event] and writes it.
+// Handle converts the [slog.Record] to an [Event] and writes it. It always
+// returns a nil error. Write failures are reported through [ErrorHandler].
 func (h *SlogHandler) Handle(ctx context.Context, record slog.Record) error {
 	event := h.logger.WithLevel(slogToZerologLevel(record.Level))
 	if event == nil {
