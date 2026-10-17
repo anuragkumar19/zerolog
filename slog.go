@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// SlogHandler implements slog.Handler using a zerolog.Logger as the backend.
+// SlogHandler implements [slog.Handler] using a [Logger] as the backend.
 type SlogHandler struct {
 	logger Logger
 
@@ -19,14 +19,15 @@ type SlogHandler struct {
 	hasCallerHook    bool
 }
 
-// NewSlogHandler creates a slog.Handler using the given zerolog.Logger as the backend.
+// NewSlogHandler creates a [slog.Handler] using the given [Logger] as the backend.
 //
-// If the logger was configured with Timestamp() or Caller(), those hooks are stripped and their values sourced from slog.Record instead.
+// If the logger was configured with [Context.Timestamp] or [Context.Caller],
+// those hooks are stripped and their values sourced from [slog.Record] instead.
 // This is required for two reasons:
 //
-//   - A zero slog.Record.Time must produce no time field (slog.Handler contract).
+//   - A zero [slog.Record.Time] must produce no time field ([slog.Handler] contract).
 //
-//   - slog.Record.PC resolves the correct call site.
+//   - [slog.Record.PC] resolves the correct call site.
 func NewSlogHandler(logger Logger) *SlogHandler {
 	h := &SlogHandler{}
 
@@ -50,9 +51,12 @@ func NewSlogHandler(logger Logger) *SlogHandler {
 
 // Enabled reports whether the handler handles records at the given level.
 func (h *SlogHandler) Enabled(_ context.Context, level slog.Level) bool {
-	// It is equivalent to Logger.should, except that it does not invoke the configured Sampler.
-	// slog.Logger calls Handler.Enabled before creating a slog.Record, while zerolog calls Logger.should (which performs sampling) when creating an Event.
-	// Calling Logger.should here would cause the sampler to run twice for the same log entry, potentially dropping logs incorrectly.
+	// It is equivalent to Logger.should, except that it does not invoke the
+	// configured Sampler. slog.Logger calls Handler.Enabled before creating a
+	// slog.Record, while zerolog calls Logger.should (which performs sampling)
+	// when creating an Event. Calling Logger.should here would cause the sampler
+	// to run twice for the same log entry, potentially dropping logs incorrectly.
+
 	zl := slogToZerologLevel(level)
 
 	if h.logger.disabled() {
@@ -64,7 +68,7 @@ func (h *SlogHandler) Enabled(_ context.Context, level slog.Level) bool {
 	return true
 }
 
-// Handle converts the slog.Record to a zerolog event and writes it.
+// Handle converts the [slog.Record] to an [Event] and writes it.
 func (h *SlogHandler) Handle(ctx context.Context, record slog.Record) error {
 	event := h.logger.WithLevel(slogToZerologLevel(record.Level))
 	if event == nil {
@@ -78,8 +82,9 @@ func (h *SlogHandler) Handle(ctx context.Context, record slog.Record) error {
 	nOpenGroups := h.nOpenGroups
 
 	if record.NumAttrs() > 0 {
-		// The group may turn out to be empty even though it has attrs (for example, all attrs are zero slog.Attr).
-		// So remember where we are in the buffer, to restore the position later if necessary.
+		// The group may turn out to be empty even though it has attrs
+		// (for example, all attrs are zero slog.Attr). So remember where
+		// we are in the buffer, to restore the position later if necessary.
 		pos := len(event.buf)
 		event.buf = h.appendUnopenedGroups(event.buf)
 
@@ -137,8 +142,9 @@ func (h *SlogHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 	event := new(Event)
 	event.buf = ctx.l.context
 
-	// The group may turn out to be empty even though it has attrs (for example, all attrs are zero slog.Attr).
-	// So remember where we are in the buffer, to restore the position later if necessary.
+	// The group may turn out to be empty even though it has attrs
+	// (for example, all attrs are zero slog.Attr). So remember where
+	// we are in the buffer, to restore the position later if necessary.
 	pos := len(event.buf)
 	event.buf = h2.appendUnopenedGroups(event.buf)
 
@@ -170,7 +176,8 @@ func (h *SlogHandler) appendUnopenedGroups(buf []byte) []byte {
 	return buf
 }
 
-// WithGroup returns a new Handler with the given group name. All subsequent attributes are nested under name in the output.
+// WithGroup returns a new Handler with the given group name.
+// All subsequent attributes are nested under name in the output.
 func (h *SlogHandler) WithGroup(name string) slog.Handler {
 	if name == "" {
 		return h
@@ -202,7 +209,8 @@ func slogToZerologLevel(level slog.Level) Level {
 	}
 }
 
-// appendSlogAttrToEvent appends a single slog.Attr to the zerolog event, handling type-specific encoding to avoid reflection where possible.
+// appendSlogAttrToEvent appends a single slog.Attr to the zerolog event,
+// handling type-specific encoding to avoid reflection where possible.
 func appendSlogAttrToEvent(event *Event, attr slog.Attr) (*Event, bool) {
 	if event == nil {
 		return event, false
