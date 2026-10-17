@@ -90,8 +90,8 @@ func (h *SlogHandler) Handle(ctx context.Context, record slog.Record) error {
 
 		notEmpty := false
 		record.Attrs(func(a slog.Attr) bool {
-			e, changed := appendSlogAttrToEvent(event, a)
-			event = e
+			var changed bool
+			event, changed = appendSlogAttrToEvent(event, a)
 			if changed {
 				notEmpty = true
 			}
@@ -150,8 +150,8 @@ func (h *SlogHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 
 	notEmpty := false
 	for _, attr := range attrs {
-		e, changed := appendSlogAttrToEvent(event, attr)
-		event = e
+		var changed bool
+		event, changed = appendSlogAttrToEvent(event, attr)
 		if changed {
 			notEmpty = true
 		}
@@ -248,8 +248,8 @@ func appendSlogAttrToEvent(event *Event, attr slog.Attr) (*Event, bool) {
 		if key == "" {
 			notEmpty := false
 			for _, ga := range attrs {
-				e, changed := appendSlogAttrToEvent(event, ga)
-				event = e
+				var changed bool
+				event, changed = appendSlogAttrToEvent(event, ga)
 				if changed {
 					notEmpty = true
 				}
@@ -260,8 +260,8 @@ func appendSlogAttrToEvent(event *Event, attr slog.Attr) (*Event, bool) {
 		dict := event.CreateDict()
 		notEmpty := false
 		for _, ga := range attrs {
-			d, changed := appendSlogAttrToEvent(dict, ga)
-			dict = d
+			var changed bool
+			dict, changed = appendSlogAttrToEvent(dict, ga)
 			if changed {
 				notEmpty = true
 			}
