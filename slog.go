@@ -291,6 +291,12 @@ func appendSlogAttrToEvent(event *Event, attr slog.Attr) (*Event, bool) {
 			event = event.IPAddrs(key, cv)
 		case net.IPNet:
 			event = event.IPPrefix(key, cv)
+		case *net.IPNet:
+			if cv != nil {
+				event = event.IPPrefix(key, *cv)
+			} else {
+				event.buf = enc.AppendNil(enc.AppendKey(event.buf, key))
+			}
 		case []net.IPNet:
 			event = event.IPPrefixes(key, cv)
 		case net.HardwareAddr:

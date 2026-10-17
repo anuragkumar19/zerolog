@@ -369,9 +369,11 @@ func TestSlogHandler_AttrsTypes(t *testing.T) {
 			"ipAddr", net.IP{192, 168, 0, 10},
 			"ipAddrs", []net.IP{{192, 168, 0, 10}, {127, 0, 0, 0}},
 			"ipPrefix", net.IPNet{IP: net.IP{192, 168, 0, 10}, Mask: net.CIDRMask(24, 32)},
+			"ipPrefixPtr", &net.IPNet{IP: net.IP{192, 168, 0, 10}, Mask: net.CIDRMask(24, 32)},
+			"ipPrefixPtrNil", (*net.IPNet)(nil),
 			"ipPrefixes", []net.IPNet{{IP: net.IP{192, 168, 0, 10}, Mask: net.CIDRMask(24, 32)}, {IP: net.IP{127, 0, 0, 0}, Mask: net.CIDRMask(24, 32)}},
 			"macAddr", net.HardwareAddr{0x01, 0x23, 0x45, 0x67, 0x89, 0xab},
-		}, `{"level":"info","strs":["one","two"],"ints":[-1,2],"ints8":[-1,2],"ints16":[-1,2],"ints32":[-1,2],"ints64":[-1,2],"uints":[1,2],"uints16":[1,2],"uints32":[1,2],"uints64":[1,2],"floats32":[3.14,1.414],"floats64":[3.14,1.414],"bools":[true,false],"times":["2001-02-03T04:05:06Z","2002-02-03T04:05:06Z"],"durs":[1000,60000],"error":"test error","errs":["first error","second error"],"bytes":"foo","ipAddr":"192.168.0.10","ipAddrs":["192.168.0.10","127.0.0.0"],"ipPrefix":"192.168.0.10/24","ipPrefixes":["192.168.0.10/24","127.0.0.0/24"],"macAddr":"01:23:45:67:89:ab","message":"msg"}` + "\n"},
+		}, `{"level":"info","strs":["one","two"],"ints":[-1,2],"ints8":[-1,2],"ints16":[-1,2],"ints32":[-1,2],"ints64":[-1,2],"uints":[1,2],"uints16":[1,2],"uints32":[1,2],"uints64":[1,2],"floats32":[3.14,1.414],"floats64":[3.14,1.414],"bools":[true,false],"times":["2001-02-03T04:05:06Z","2002-02-03T04:05:06Z"],"durs":[1000,60000],"error":"test error","errs":["first error","second error"],"bytes":"foo","ipAddr":"192.168.0.10","ipAddrs":["192.168.0.10","127.0.0.0"],"ipPrefix":"192.168.0.10/24","ipPrefixPtr":"192.168.0.10/24","ipPrefixPtrNil":null,"ipPrefixes":["192.168.0.10/24","127.0.0.0/24"],"macAddr":"01:23:45:67:89:ab","message":"msg"}` + "\n"},
 	}
 
 	for _, tt := range tests {
